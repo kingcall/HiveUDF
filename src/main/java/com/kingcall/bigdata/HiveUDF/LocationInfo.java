@@ -1,4 +1,4 @@
-package com.longzhu.bigdata.HiveUDF;
+package com.kingcall.bigdata.HiveUDF;
 
 public class LocationInfo {
     public final String country;

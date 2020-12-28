@@ -1,4 +1,4 @@
-package com.longzhu.bigdata.HiveUDF;
+package com.kingcall.bigdata.HiveUDF;
 
 import java.io.*;
 import java.nio.charset.Charset;
@@ -78,7 +78,7 @@ public final class IPLocator {
         }
         return null;
     }
-    
+
     static byte[] textToNumericFormatV4(String str) {
         String[] s = str.split("\\.");
         if (s.length != 4) {

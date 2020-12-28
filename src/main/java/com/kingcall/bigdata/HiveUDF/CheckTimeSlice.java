@@ -1,4 +1,4 @@
-package com.longzhu.bigdata.HiveUDF;
+package com.kingcall.bigdata.HiveUDF;
 
 import org.apache.hadoop.hive.ql.exec.UDF;
 import org.apache.hadoop.hive.ql.exec.Description;
@@ -6,7 +6,7 @@ import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 
 /**
- * 
+ *
  * CheckTimeSlice
  *
  */

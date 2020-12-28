@@ -1,4 +1,4 @@
-package com.longzhu.bigdata.HiveUDF;
+package com.kingcall.bigdata.HiveUDF;
 
 import org.apache.hadoop.hive.ql.exec.Description;
 import org.apache.hadoop.hive.ql.exec.UDAF;

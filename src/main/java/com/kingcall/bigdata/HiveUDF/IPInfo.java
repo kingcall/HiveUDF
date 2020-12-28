@@ -1,4 +1,4 @@
-package com.longzhu.bigdata.HiveUDF;
+package com.kingcall.bigdata.HiveUDF;
 
 import org.apache.hadoop.hive.ql.exec.UDF;
 import org.apache.hadoop.hive.ql.exec.Description;
@@ -10,7 +10,7 @@ import org.apache.hadoop.fs.Path;
 
 
 /**
- * 
+ *
  * ip_info
  *
  */
@@ -22,7 +22,7 @@ import org.apache.hadoop.fs.Path;
 public class IPInfo extends UDF {
     private final transient Text result = new Text();
     private static IPLocator l;
-    private static final String fileName = "/user/hdfs/jars/ip.dat"; 
+    private static final String fileName = "/user/hdfs/jars/ip.dat";
     static {
         try {
             FileSystem fs = FileSystem.get(new Configuration());
@@ -50,7 +50,7 @@ public class IPInfo extends UDF {
         }
         return result;
     }
-    
+
     public Text evaluate(Text IP) {
         LocationInfo res = l.find(IP.toString());
         if (res == null) return null;

@@ -1,4 +1,4 @@
-package com.longzhu.bigdata.HiveUDF;
+package com.kingcall.bigdata.HiveUDF;
 
 /**
  * Copy From org.apache.hadoop.hive.ql.udf.generic.GenericUDFAesBase

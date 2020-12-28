@@ -1,15 +1,15 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>com.longzhu.bigdata</groupId>
+  <groupId>com.kingcall.bigdata</groupId>
   <artifactId>HiveUDF</artifactId>
   <version>0.0.4</version>
   <name>HiveUDF</name>
-  <description>longzhu hive udfs</description>
+  <description>com.kingcall hive udfs</description>
 
   <properties>
-    <hive.version>1.1.0-cdh5.7.1</hive.version>
-    <hadoop.version>2.6.0-cdh5.7.1</hadoop.version>
+    <hive.version>3.1.2</hive.version>
+    <hadoop.version>3.2.1</hadoop.version>
   </properties>
 
 
@@ -52,7 +52,14 @@
       <version>5.1.6</version>
       <scope>compile</scope>
     </dependency>
+
+    <dependency>
+      <groupId>com.janeluo</groupId>
+      <artifactId>ikanalyzer</artifactId>
+      <version>2012_u6</version>
+    </dependency>
   </dependencies>
+
 
   <build>
     <pluginManagement>
