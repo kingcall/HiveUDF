@@ -130,10 +130,25 @@ public class GeneralTest {
         exp.add("字符串");
 
         GenericUDF.DeferredObject valueObj0 = new GenericUDF.DeferredJavaObject(str);
-        GenericUDF.DeferredObject valueObj1 = new GenericUDF.DeferredJavaObject(0);
+        GenericUDF.DeferredObject valueObj1 = new GenericUDF.DeferredJavaObject(1);
         GenericUDF.DeferredObject[] args = {valueObj0, valueObj1};
         ArrayList<Object> res = (ArrayList<Object>) udf.evaluate(args);
         System.out.println(res);
+    }
+
+    @Test
+    public void ip2Region() throws HiveException {
+        Ip2Region udf = new Ip2Region();
+        ObjectInspector valueOI0 = PrimitiveObjectInspectorFactory.javaStringObjectInspector;
+        ObjectInspector[] init_args = {valueOI0};
+        udf.initialize(init_args);
+        String ip = "220.248.12.158";
+
+        GenericUDF.DeferredObject valueObj0 = new GenericUDF.DeferredJavaObject(ip);
+
+        GenericUDF.DeferredObject[] args = {valueObj0};
+        Text res = (Text) udf.evaluate(args);
+        System.out.println(res.toString());
     }
 
 }

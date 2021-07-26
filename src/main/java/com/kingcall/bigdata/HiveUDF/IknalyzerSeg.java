@@ -1,5 +1,9 @@
 package com.kingcall.bigdata.HiveUDF;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.ql.exec.Description;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentLengthException;
@@ -27,6 +31,7 @@ public class IknalyzerSeg extends GenericUDF {
     private transient ObjectInspectorConverters.Converter[] converters;
     //用来存放停用词的集合
     Set<String> stopWordSet = new HashSet<String>();
+    private static final String userDic = "/app/stopwords/com.kingcall.dic";
 
     @Override
     public ObjectInspector initialize(ObjectInspector[] arguments) throws UDFArgumentException {
@@ -36,11 +41,15 @@ public class IknalyzerSeg extends GenericUDF {
         }
         //读入停用词文件
         BufferedReader StopWordFileBr = null;
+
         try {
-            StopWordFileBr = new BufferedReader(new InputStreamReader(new FileInputStream(new File("stopwords/baidu_stopwords.txt"))));
+            FileSystem fs = FileSystem.get(new Configuration());
+            FSDataInputStream in = fs.open(new Path(userDic));
+            StopWordFileBr = new BufferedReader(new InputStreamReader(in));
+
             //初如化停用词集
             String stopWord = null;
-            for(; (stopWord = StopWordFileBr.readLine()) != null;){
+            for (; (stopWord = StopWordFileBr.readLine()) != null; ) {
                 stopWordSet.add(stopWord);
             }
         } catch (FileNotFoundException e) {
