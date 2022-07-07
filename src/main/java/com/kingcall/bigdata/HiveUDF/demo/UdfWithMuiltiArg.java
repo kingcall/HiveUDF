@@ -3,7 +3,7 @@ package com.kingcall.bigdata.HiveUDF.demo;
 import org.apache.hadoop.hive.ql.exec.UDF;
 import org.apache.hadoop.io.Text;
 import org.junit.Assert;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 public class UdfWithMuiltiArg extends UDF {
     public String evaluate(String a,String b){

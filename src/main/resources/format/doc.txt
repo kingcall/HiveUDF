@@ -1,0 +1,16 @@
+<DOC>
+  id=1
+  name=a
+</DOC>
+<DOC>
+  id=2
+  name=b
+</DOC>
+<DOC>
+  id=3
+  name=c
+</DOC>
+<DOC>
+  id=4
+  name=d
+</DOC>

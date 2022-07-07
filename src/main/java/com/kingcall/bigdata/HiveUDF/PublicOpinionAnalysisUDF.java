@@ -1,107 +1,171 @@
 package com.kingcall.bigdata.HiveUDF;
 
-
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import com.kingcall.bigdata.HiveUtil.HttpClientUtil;
-import org.apache.hadoop.hive.ql.exec.Description;
+import com.alibaba.fastjson.TypeReference;
+import com.kingcall.bigdata.HiveUtil.HttpClientUtilBatch;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDF;
-import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
-import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorConverters;
-import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorConverters.Converter;
+import org.apache.hadoop.hive.serde2.objectinspector.*;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.AbstractPrimitiveJavaObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
 import org.apache.hadoop.io.Text;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.RejectedExecutionHandler;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicInteger;
 
-@Description(name = "vocana", value = "_FUNC_(" +
-        "String dataSource 数据源(维修三包、长安百科-视频、NPS调研等)\n" +
-        "List domainList : 不同指标表（如汽车、VRT）\n" +
-        "String title: 主题或者问题或者目录名称或者活动名称（随数据源而变化）\n" +
-        "String text: 正文或者回答或者评分或者评论（随数据源而变化）\n" +
-        "Int position: position=1分析title和text，position不为1只分析text\n" +
-        "int textType: 分析数据类型（用1、2、3表示，具体对应类型看下面例子）\n" +
-        "String populationGroup: 人群（贬损者、推荐者、中立者）\n" +
-        "Sting productName:产品名称\n" +
-        ") - return result",
-        extended = "")
 
 public class PublicOpinionAnalysisUDF extends GenericUDF {
-    private Converter converter;
-    private String url;
+    private ListObjectInspector listoi;
+    private MapObjectInspector mapOI;
+    private ThreadPoolExecutor threadPool;
+    CountDownLatch latch;
+    RejectedExecutionHandler handler;
+    AtomicInteger counter;
+    private List<String> urls=new ArrayList<>();
+    private static Logger logger=LoggerFactory.getLogger(PublicOpinionAnalysisUDF.class);
+    String url = "http://10.64.22.126:8110/changan/voc/analyzerList";
 
     @Override
     public ObjectInspector initialize(ObjectInspector[] arguments) throws UDFArgumentException {
+
         /**
          * 因为是通用接口，所以参数个数是固定的
          */
-        if (arguments.length < 8) {
-            throw new UDFArgumentException("parameter is not enough,8 parameters is need");
+        if (arguments.length != 1) {
+            throw new UDFArgumentException("parameter count is not one,jsut one parameters is need");
         }
-        converter = ObjectInspectorConverters.getConverter(arguments[0], PrimitiveObjectInspectorFactory.writableStringObjectInspector);
-        url="http://10.64.22.151:8100/changan/voc/analyze";
-        return PrimitiveObjectInspectorFactory.writableStringObjectInspector;
+
+        listoi = (ListObjectInspector) arguments[0];
+        mapOI = (MapObjectInspector) listoi.getListElementObjectInspector();
+
+
+        //输出结构体定义
+        AbstractPrimitiveJavaObjectInspector primitiveStringInspector = PrimitiveObjectInspectorFactory.getPrimitiveJavaObjectInspector(PrimitiveObjectInspector.PrimitiveCategory.STRING);
+
+        //extractedInfo 的定义
+        StandardMapObjectInspector standardMapObjectInspector = ObjectInspectorFactory.getStandardMapObjectInspector(
+                primitiveStringInspector,
+                primitiveStringInspector
+
+        );
+        StandardListObjectInspector listObjectInspector = ObjectInspectorFactory.getStandardListObjectInspector(standardMapObjectInspector);
+
+        ArrayList structFieldNames = new ArrayList();
+        ArrayList structFieldObjectInspectors = new ArrayList();
+        // 字段定义
+        structFieldNames.add("dataid");
+        structFieldNames.add("extractedInfo");
+        structFieldNames.add("msg");
+        structFieldNames.add("time");
+        // 类型定义
+        structFieldObjectInspectors.add(primitiveStringInspector);
+        structFieldObjectInspectors.add(listObjectInspector);
+        structFieldObjectInspectors.add(primitiveStringInspector);
+        structFieldObjectInspectors.add(primitiveStringInspector);
+
+        StructObjectInspector structObjectInspector = ObjectInspectorFactory.getStandardStructObjectInspector(structFieldNames, structFieldObjectInspectors);
+
+        return ObjectInspectorFactory.getStandardListObjectInspector(structObjectInspector);
+
     }
 
     @Override
     public Object evaluate(DeferredObject[] arguments) throws HiveException {
+        // 其实线程池可以放在这里创建 指定参数
+        int nelements = listoi.getListLength(arguments[0].get());
+        long start = System.currentTimeMillis();
+        latch = new CountDownLatch(nelements);
+        // 返回结果的队列
+        List<Object[]> arrayList = new ArrayList<Object[]>(nelements);
+        //遍历list 准备参数
+        JSONArray jsonArrayParameter = new JSONArray();
+        for (int i = 0; i < nelements; i++) {
+            //获取map
+            JSONObject parameterJson = new JSONObject();
+            // 这里应该有更好的方法的，但是没找到，只能遍历
+            mapOI.getMap(listoi.getListElement(arguments[0].get(), i)).forEach((k, v) -> {
+                parameterJson.put(k.toString(), v.toString());
+            });
+            jsonArrayParameter.add(parameterJson);
+        }
 
-        /**
-         * 根据接口的调用情况解析参数
-         * String dataSource 数据源(维修三包、长安百科-视频、NPS调研等)
-         * List domainList : 不同指标表（如汽车、VRT）
-         * String title: 主题或者问题或者目录名称或者活动名称（随数据源而变化）
-         * String text: 正文或者回答或者评分或者评论（随数据源而变化）
-         * Int position: position=1分析title和text，position不为1只分析text
-         * int textType: 分析数据类型（用1、2、3表示，具体对应类型看下面例子）
-         * String populationGroup: 人群（贬损者、推荐者、中立者）
-         * Sting productName:产品名称
-         */
-        String dataSource =converter.convert(arguments[0].get()).toString();
-        List<String> domainList = Arrays.asList(converter.convert(arguments[1].get()).toString().split(","));
-        String title = converter.convert(arguments[2].get()).toString();
-        String text = converter.convert(arguments[3].get()).toString();
-        String position = converter.convert(arguments[4].get()).toString();
-        String textType = converter.convert(arguments[5].get()).toString();
-        String populationGroup =  converter.convert(arguments[6].get()).toString();
-        String productName = converter.convert(arguments[7].get()).toString();
-        // 构建参数 调用HTTP接口
-        JSONObject jsObject = new JSONObject();
-        jsObject.put("dataSource", dataSource);
-        jsObject.put("domainList", domainList);
-        jsObject.put("title", title);
-        jsObject.put("text", text);
-        jsObject.put("position", position);
-        jsObject.put("populationGroup", populationGroup);
-        jsObject.put("productName", productName);
-
-        return HttpClientUtil.doPost(url, jsObject);
-
+        JSONArray  jsonArrayResults = HttpClientUtilBatch.doPost(url, jsonArrayParameter);
+        for (int i = 0; i < jsonArrayResults.size(); i++) {
+            JSONObject jsonObject = jsonArrayResults.getJSONObject(i);
+            if (jsonObject!=null){
+                Object[] struct = new Object[4];
+                String dataId = jsonObject.getString("dataId");
+                String msg = jsonObject.getString("msg");
+                String time = jsonObject.getString("costTime");
+                //
+                JSONObject jsonDataObj = jsonObject.getJSONObject("data");
+                ArrayList<Map<String, String>> maps = new ArrayList<>();
+                if (jsonDataObj!=null){
+                    JSONArray jsonArray=jsonDataObj.getJSONArray("extractedInfo");
+                    if (jsonArray!=null && jsonArray.size()>0){
+                        maps = new ArrayList<>(jsonArray.size());
+                        for (int j = 0; j < jsonArray.size(); j++) {
+                            Map<String, String> innerMap = JSONObject.parseObject(jsonArray.getJSONObject(j).toJSONString(), new TypeReference<Map<String, String>>() {
+                            });
+                            maps.add(innerMap);
+                        }
+                    }
+                }
+                struct[0] = dataId;
+                struct[1] = maps;
+                struct[2] = msg;
+                struct[3] = time;
+                arrayList.add(struct);
+            }
+        }
+        logger.warn(String.format("input bacth count:%d result count:%d",nelements,jsonArrayResults.size() ));
+        return arrayList;
     }
+
 
     @Test
     public void testPublicOpinionAnalysisUDF() throws HiveException {
         PublicOpinionAnalysisUDF udf = new PublicOpinionAnalysisUDF();
-        ObjectInspector valueOI0 = PrimitiveObjectInspectorFactory.javaStringObjectInspector;
-        ObjectInspector[] init_args = {valueOI0};
+        StandardMapObjectInspector standardMapObjectInspector = ObjectInspectorFactory.getStandardMapObjectInspector(
+                PrimitiveObjectInspectorFactory.writableStringObjectInspector,
+                PrimitiveObjectInspectorFactory.writableStringObjectInspector
+
+        );
+        StandardListObjectInspector listObjectInspector = ObjectInspectorFactory.getStandardListObjectInspector(standardMapObjectInspector);
+
+
+        ObjectInspector[] init_args = {listObjectInspector};
         udf.initialize(init_args);
 
-        Text str = new Text("我是测试字符串2");
+        ArrayList<Map<Text, Text>> arrayList = new ArrayList<>();
+        HashMap<Text, Text> map = new HashMap<>();
+        map.put(new Text("dataSource"), new Text("长安汽车直评"));
+        map.put(new Text("dataId"), new Text("2"));
+        map.put(new Text("'domainListJson'"), new Text("[\"VRT\",\"全旅程客户\",\"全领域业务\",\"商品化属性\",\"销售线索\"]"));
+        arrayList.add(map);
+        arrayList.add(map);
+        arrayList.add(map);
+
         DeferredObject[] args = {
-                new DeferredJavaObject(str),
-                new DeferredJavaObject(str),
-                new DeferredJavaObject(str),
-                new DeferredJavaObject(str),
-                new DeferredJavaObject(str),
-                new DeferredJavaObject(str),
-               // new DeferredJavaObject(str),
-                new DeferredJavaObject(str)
+                new DeferredJavaObject(arrayList)
         };
-        String res = (String) udf.evaluate(args);
-        System.out.println(res);
+        udf.evaluate(args);
+        arrayList.add(map);
+        arrayList.add(map);
+        arrayList.add(map);
+        DeferredObject[] args2 = {new DeferredJavaObject(arrayList)};
+        udf.evaluate(args);
     }
 
 
