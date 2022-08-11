@@ -9,7 +9,7 @@
 
     <properties>
         <hive.version>3.1.2</hive.version>
-        <hadoop.version>3.2.1</hadoop.version>
+        <hadoop.version>3.2.4</hadoop.version>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
